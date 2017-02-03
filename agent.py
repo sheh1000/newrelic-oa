@@ -11,8 +11,9 @@ import time
 #--------------------------------------------------------------------
 class Newrelic_Metrics(object):
 
-    def __init__(self, nr_licence_key, agent_name, agent_version, guid, 
+    def __init__(self, proxies, nr_licence_key, agent_name, agent_version, guid, 
                  poll_cycle, metrics, hostname):
+        self.proxies = proxies
         self.nr_api_url = 'https://platform-api.newrelic.com/platform/v1/metrics'
         self.nr_licence_key = nr_licence_key
         self.agent_name = agent_name
@@ -22,13 +23,22 @@ class Newrelic_Metrics(object):
         self.metrics = metrics
         self.hostname = hostname
 
-    def http_request(self, url, headers, data, timeout):
+    def http_request(self, url, proxies, headers, data, timeout):
         """ HTTP request """
         try:
             logger.info("Sending HTTP POST request: %s " % (url), extra={'hostname': hostname})
             encoded_str = json.dumps(data)
             start_timer = time.time()
-            r = requests.post(url, headers=headers, data=encoded_str, timeout=timeout)
+
+            if proxies:
+                r = requests.post(url,
+                                proxies=dict(http='socks5://user:pass@host:port', https='socks5://user:pass@host:port'),
+                                headers=headers, 
+                                data=encoded_str, 
+                                timeout=timeout)
+            else:
+                r = requests.post(url, headers=headers, data=encoded_str, timeout=timeout)
+
             response_time = "%.2f" % (time.time() - start_timer)
             if r.status_code == requests.codes.ok:
                 logger.info("HTML code: %s" % (r.status_code), extra={'hostname': hostname})
@@ -72,7 +82,7 @@ class Newrelic_Metrics(object):
                    "Accept": "application/json", 
                    "X-License-Key": self.nr_licence_key}
         logger.info("headers: \n%s" % headers, extra={'hostname': hostname})
-        (request_status, status_code, headers, response_time) = self.http_request(self.nr_api_url, headers, payload, 10)
+        (request_status, status_code, headers, response_time) = self.http_request(self.nr_api_url, proxies, headers, payload, 10)
         logger.info("HTTP request status:\n %s, \n HTTP code:%s, \n Headers: %s, \n Latency:%s\n\n" % (request_status, 
                                                                                                                  status_code, 
                                                                                                                  headers, 
@@ -95,6 +105,7 @@ if __name__ == "__main__":
     metrics = {}
     metrics["Custom/ControlPanel/%s" % domain]=float(val)
     newrelic_utils = Newrelic_Metrics(
+                        proxies=False,
                         nr_licence_key=nr_licence_key, 
                         agent_name="OdinRobotFramework", 
                         agent_version="1.0.0", 
