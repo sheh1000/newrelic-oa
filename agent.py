@@ -32,7 +32,7 @@ class Newrelic_Metrics(object):
 
             if proxies:
                 r = requests.post(url,
-                                proxies=dict(http='socks5://user:pass@host:port', https='socks5://user:pass@host:port'),
+                                proxies=proxies,
                                 headers=headers, 
                                 data=encoded_str, 
                                 timeout=timeout)
@@ -82,7 +82,7 @@ class Newrelic_Metrics(object):
                    "Accept": "application/json", 
                    "X-License-Key": self.nr_licence_key}
         logger.info("headers: \n%s" % headers, extra={'hostname': hostname})
-        (request_status, status_code, headers, response_time) = self.http_request(self.nr_api_url, proxies, headers, payload, 10)
+        (request_status, status_code, headers, response_time) = self.http_request(self.nr_api_url, self.proxies, headers, payload, 10)
         logger.info("HTTP request status:\n %s, \n HTTP code:%s, \n Headers: %s, \n Latency:%s\n\n" % (request_status, 
                                                                                                                  status_code, 
                                                                                                                  headers, 
@@ -105,7 +105,10 @@ if __name__ == "__main__":
     metrics = {}
     metrics["Custom/ControlPanel/%s" % domain]=float(val)
     newrelic_utils = Newrelic_Metrics(
-                        proxies=False,
+                        proxies={
+                                "https":"https://<proxy_ip>:3128"
+                                },
+                        #proxies=False,
                         nr_licence_key=nr_licence_key, 
                         agent_name="OdinRobotFramework", 
                         agent_version="1.0.0", 
